@@ -1,37 +1,62 @@
 package ru.oxymo.dockertestui.service
 
+import com.github.dockerjava.core.DockerClientConfig
+import com.github.dockerjava.core.DockerClientImpl
+import com.github.dockerjava.transport.DockerHttpClient
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import ru.oxymo.dockertestui.data.ContainerDTO
 
 @Service
-class DockerAPICaller {
+class DockerAPICaller @Autowired constructor(
+    dockerConfiguration: DockerClientConfig,
+    dockerHttpClient: DockerHttpClient
+) {
 
     private val log = LoggerFactory.getLogger(DockerAPICaller::class.java)
+    private val dockerClient = DockerClientImpl.getInstance(dockerConfiguration, dockerHttpClient)
 
     fun getContainers(): List<ContainerDTO> {
-//        TODO implement API call
-        return listOf(
-            ContainerDTO("skhfkfl", "qewkfkv", "run", "2 minutes ago", "exited", "18080", ""),
-            ContainerDTO("djsvdjf", "safsfsf", "run", "2 minutes ago", "exited", "18081", "")
-        )
+        val containerList = dockerClient.listContainersCmd().withShowAll(true).exec()
+        return containerList.map {
+            ContainerDTO(
+                it.id,
+                it.image,
+                it.command,
+                it.created,
+                it.status,
+                it.state,
+                it.ports.joinToString(", \n"),
+                it.names.joinToString(", \n")
+            )
+        }
+//        return listOf(
+//            ContainerDTO("skhfkfl", "qewkfkv", "run", "2 minutes ago", "exited", "18080", ""),
+//            ContainerDTO("djsvdjf", "safsfsf", "run", "2 minutes ago", "exited", "18081", "")
+//        )
     }
 
     fun ping() {
+        dockerClient.pingCmd().exec()
 //        TODO implement API call
     }
 
     fun startContainer(containerDTO: ContainerDTO) {
         log.info("Starting container with id = {}", containerDTO.id)
+        dockerClient.startContainerCmd(containerDTO.id).exec()
 //        TODO implement API call
     }
 
     fun stopContainer(containerDTO: ContainerDTO) {
         log.info("Stopping container with id = {}", containerDTO.id)
+        dockerClient.stopContainerCmd(containerDTO.id).exec()
 //        TODO implement API call
     }
 
     fun getContainerLogs(containerDTO: ContainerDTO): String {
+        log.info("Showing logs for container with id = {}", containerDTO.id)
+//        val text: String = dockerClient.logContainerCmd(containerDTO.id).exec()
 //        TODO implement API call
         return "2022-09-24 18:28:04.738  INFO 10384 --- [           main] org.atmosphere.cpr.AtmosphereFramework   : Installed AtmosphereHandler com.vaadin.flow.server.communication.PushAtmosphereHandler mapped to context-path: /*\n" +
                 "2022-09-24 18:28:04.738  INFO 10384 --- [           main] org.atmosphere.cpr.AtmosphereFramework   : Installed the following AtmosphereInterceptor mapped to AtmosphereHandler com.vaadin.flow.server.communication.PushAtmosphereHandler\n" +

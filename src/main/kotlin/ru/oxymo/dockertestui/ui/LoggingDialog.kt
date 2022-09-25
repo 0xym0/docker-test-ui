@@ -15,7 +15,7 @@ class LoggingDialog : Div() {
 
     init {
         val scroller = Scroller(content)
-        scroller.scrollDirection = Scroller.ScrollDirection.VERTICAL
+        scroller.scrollDirection = Scroller.ScrollDirection.BOTH
         dialog.headerTitle = "Container log"
         dialog.add(scroller)
         dialog.footer.add(createCloseButton())
@@ -34,8 +34,8 @@ class LoggingDialog : Div() {
         dialog.close()
     }
 
-    fun openDialog(logLines: List<String>) {
-        logLines.forEach { s -> content.add(Pre(s)) }
+    fun openDialog(logLines: String) {
+        content.add(Pre(logLines))
         dialog.open()
     }
 
