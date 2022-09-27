@@ -1,5 +1,7 @@
 package ru.oxymo.dockertestui.ui
 
+import com.vaadin.flow.component.AttachEvent
+import com.vaadin.flow.component.DetachEvent
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
@@ -7,10 +9,13 @@ import com.vaadin.flow.component.icon.Icon
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
+import com.vaadin.flow.shared.Registration
 import com.vaadin.flow.spring.annotation.SpringComponent
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.scheduling.annotation.Scheduled
 import ru.oxymo.dockertestui.data.ContainerDTO
 import ru.oxymo.dockertestui.service.DockerAPICaller
+import ru.oxymo.dockertestui.util.ContainerListRefresher
 
 @SpringComponent
 class ContainerGrid @Autowired constructor(
@@ -19,6 +24,7 @@ class ContainerGrid @Autowired constructor(
 ) : VerticalLayout() {
 
     private final val grid = Grid<ContainerDTO>()
+    private var registration: Registration? = null
 
     init {
         grid.addColumn(ContainerDTO::id).setHeader("ID").isSortable = false
@@ -40,12 +46,37 @@ class ContainerGrid @Autowired constructor(
         )
     }
 
+    @Scheduled(fixedDelayString = "\${docker.test.ui.grid.update.delay.ms:10000}",
+        initialDelayString = "\${docker.test.ui.grid.initial.delay.ms:10000}")
+    fun refresh() {
+        val containerDTOList = dockerAPICaller.getContainers()
+        ContainerListRefresher.broadcast(containerDTOList)
+    }
+
+    override fun onAttach(attachEvent: AttachEvent) {
+        val ui = attachEvent.ui
+        registration = ContainerListRefresher.register { containerDTOList ->
+            ui.access {
+                grid.setItems(containerDTOList)
+            }
+        }
+    }
+
+    override fun onDetach(detachEvent: DetachEvent) {
+        registration?.remove()
+        registration = null
+    }
+
     private fun getCellLayout(item: ContainerDTO): HorizontalLayout {
         val playButton = Button(Icon(VaadinIcon.PLAY)) {
             dockerAPICaller.startContainer(item)
+            val containerDTOList = dockerAPICaller.getContainers()
+            ContainerListRefresher.broadcast(containerDTOList)
         }
         val stopButton = Button(Icon(VaadinIcon.STOP)) {
             dockerAPICaller.stopContainer(item)
+            val containerDTOList = dockerAPICaller.getContainers()
+            ContainerListRefresher.broadcast(containerDTOList)
         }
         val showLogsButton = Button("View logs") {
             showContainerLogs(item)

@@ -23,8 +23,8 @@ class LoggingDialog : Div() {
     }
 
     fun closeDialog() {
-        content.removeAll()
         dialog.close()
+        content.removeAll()
     }
 
     fun openDialog(logLines: String) {
