@@ -1,0 +1,34 @@
+.docker-test-ui-header {
+    padding: 0;
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+pre {
+    margin-top: 0;
+    background-color: #f4f4f4 !important;
+    min-width: 400px;
+    max-width: 100%;
+    min-height: 240px;
+}
+
+.docker-test-ui-configuration-form-layout {
+    min-width: 400px;
+    max-width: 100%;
+}
+
+:host div[part="content"] {
+    background-color: #f4f4f4;
+    scroll-behavior: auto;
+}
+
+vaadin-icon[icon="vaadin:play"] {
+    color: green;
+}
+
+vaadin-icon[icon="vaadin:stop"] {
+    color: red;
+}

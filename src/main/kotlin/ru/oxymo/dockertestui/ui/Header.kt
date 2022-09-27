@@ -19,13 +19,12 @@ class Header @Autowired constructor(private val connectionDialog: ConnectionDial
     }
 
     init {
-        h1.style.set("font-size", "24px").set("margin", "0 0 0 0")
         val container = HorizontalLayout(h1, settingsButton)
         container.alignItems = FlexComponent.Alignment.CENTER
         container.justifyContentMode = FlexComponent.JustifyContentMode.BETWEEN
         container.setWidthFull()
 
-        this.isPadding = false
+        this.addClassName("docker-test-ui-header")
         this.add(connectionDialog, container)
     }
 

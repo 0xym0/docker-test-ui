@@ -21,30 +21,15 @@ class ContainerGrid @Autowired constructor(
     private final val grid = Grid<ContainerDTO>()
 
     init {
-        grid.addColumn(ContainerDTO::id).setHeader("ID")
-        grid.addColumn(ContainerDTO::image).setHeader("Image")
-        grid.addColumn(ContainerDTO::ports).setHeader("Ports")
-        grid.addColumn(ContainerDTO::status).setHeader("Status")
+        grid.addColumn(ContainerDTO::id).setHeader("ID").isSortable = false
+        grid.addColumn(ContainerDTO::names).setHeader("Names").isSortable = false
+        grid.addColumn(ContainerDTO::image).setHeader("Image").isSortable = false
+        grid.addColumn(ContainerDTO::ports).setHeader("Ports").isSortable = false
+        grid.addColumn(ContainerDTO::status).setHeader("Status").isSortable = false
         grid.addComponentColumn { item -> getCellLayout(item) }
-//        grid.addComponentColumn { item ->
-//            Button(Icon(VaadinIcon.PLAY)) {
-//                dockerAPICaller.startContainer(item)
-//            }
-//        }
-//        grid.addComponentColumn { item ->
-//            Button(Icon(VaadinIcon.STOP)) {
-//                dockerAPICaller.stopContainer(item)
-//            }
-//        }
-//        grid.addComponentColumn { item ->
-//            Button("Show logs") {
-//                showContainerLogs(item)
-//            }
-//        }
 
         grid.setItems(dockerAPICaller.getContainers())
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
-//        grid.isDetailsVisibleOnClick = false
         grid.setSelectionMode(Grid.SelectionMode.NONE)
 
         this.isPadding = false
@@ -56,51 +41,37 @@ class ContainerGrid @Autowired constructor(
     }
 
     private fun getCellLayout(item: ContainerDTO): HorizontalLayout {
-        val playIcon = Icon(VaadinIcon.PLAY)
-        val stopIcon = Icon(VaadinIcon.STOP)
-        val playButton = Button(playIcon) {
+        val playButton = Button(Icon(VaadinIcon.PLAY)) {
             dockerAPICaller.startContainer(item)
         }
-        val stopButton = Button(stopIcon) {
+        val stopButton = Button(Icon(VaadinIcon.STOP)) {
             dockerAPICaller.stopContainer(item)
         }
-        val showLogsButton = Button("Show logs") {
+        val showLogsButton = Button("View logs") {
             showContainerLogs(item)
         }
         return when (item.state) {
             "running" -> {
-                playIcon.color = "gray"
-                stopIcon.color = "red"
                 HorizontalLayout(
-                    playIcon,
                     stopButton,
                     showLogsButton
                 )
             }
 
-            "restarting" -> {
-                playIcon.color = "gray"
-                stopIcon.color = "gray"
+            "removing", "restarting" -> {
                 HorizontalLayout(
-                    playIcon,
-                    stopIcon,
                     showLogsButton
                 )
             }
 
-            "removing", "exited" -> {
-                playIcon.color = "green"
-                stopIcon.color = "gray"
+            "created", "exited" -> {
                 HorizontalLayout(
                     playButton,
-                    stopIcon,
                     showLogsButton
                 )
             }
 
             else -> {
-                playIcon.color = "green"
-                stopIcon.color = "red"
                 HorizontalLayout(
                     playButton,
                     stopButton,

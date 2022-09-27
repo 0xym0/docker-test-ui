@@ -4,7 +4,6 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.Pre
-import com.vaadin.flow.component.orderedlayout.Scroller
 import com.vaadin.flow.spring.annotation.SpringComponent
 
 @SpringComponent
@@ -14,19 +13,13 @@ class LoggingDialog : Div() {
     private final val content = Div()
 
     init {
-        val scroller = Scroller(content)
-        scroller.scrollDirection = Scroller.ScrollDirection.BOTH
         dialog.headerTitle = "Container log"
-        dialog.add(scroller)
-        dialog.footer.add(createCloseButton())
+        dialog.add(content)
+        dialog.footer.add(Button("Close") {
+            closeDialog()
+        })
 
         this.add(dialog)
-    }
-
-    private fun createCloseButton(): Button {
-        val button = Button("Close")
-        button.addClickListener { closeDialog() }
-        return button
     }
 
     fun closeDialog() {

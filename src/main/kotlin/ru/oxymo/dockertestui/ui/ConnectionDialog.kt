@@ -36,17 +36,12 @@ class ConnectionDialog @Autowired constructor(
             dockerHostField,
             dockerAPIVersionField,
         )
-//        layout.isSpacing = false
-//        layout.isPadding = false
-//        layout.alignItems = FlexComponent.Alignment.STRETCH
-        layout.style.set("width", "400px").set("max-width", "100%")
+        layout.addClassName("docker-test-ui-configuration-form-layout")
         return layout
     }
 
     private fun createCancelButton(): Button {
-        val button = Button("Cancel")
-        button.addClickListener { dialog.close() }
-        return button
+        return Button("Cancel") { dialog.close() }
     }
 
     private fun createSaveButton(): Button {
