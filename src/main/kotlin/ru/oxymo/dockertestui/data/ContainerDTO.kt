@@ -9,6 +9,4 @@ data class ContainerDTO(
     val state: String,
     val ports: String,
     val names: String
-) {
-
-}
+)

@@ -1,6 +1,5 @@
 package ru.oxymo.dockertestui.ui
 
-import com.github.dockerjava.core.DockerClientConfig
 import com.vaadin.flow.component.Key
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
@@ -10,10 +9,11 @@ import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.spring.annotation.SpringComponent
 import org.springframework.beans.factory.annotation.Autowired
+import ru.oxymo.dockertestui.service.DockerConnector
 
 @SpringComponent
 class ConnectionDialog @Autowired constructor(
-    private val dockerClientConfiguration: DockerClientConfig
+    private val dockerConnector: DockerConnector
 ) : Div() {
 
     private final val dialog = Dialog()
@@ -30,8 +30,6 @@ class ConnectionDialog @Autowired constructor(
     }
 
     private fun createDialogLayout(): FormLayout {
-        dockerHostField.value = dockerClientConfiguration.dockerHost.toString()
-        dockerAPIVersionField.value = dockerClientConfiguration.apiVersion.version
         val layout = FormLayout(
             dockerHostField,
             dockerAPIVersionField,
@@ -48,7 +46,7 @@ class ConnectionDialog @Autowired constructor(
         val button = Button("Save")
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
         button.addClickListener {
-//            dockerClientConfiguration.dockerHost
+//            dockerConnector.updateDockerConfiguration()
             dialog.close()
         }
         button.addClickShortcut(Key.ENTER)
@@ -56,8 +54,9 @@ class ConnectionDialog @Autowired constructor(
     }
 
     fun openDialog() {
-        dockerHostField.value = dockerClientConfiguration.dockerHost.toString()
-        dockerAPIVersionField.value = dockerClientConfiguration.apiVersion.version
+        val configurationDTO = dockerConnector.getDockerConfigurationDTO()
+        dockerHostField.value = configurationDTO.dockerHost
+        dockerAPIVersionField.value = configurationDTO.dockerApiVersion
         dialog.open()
     }
 
