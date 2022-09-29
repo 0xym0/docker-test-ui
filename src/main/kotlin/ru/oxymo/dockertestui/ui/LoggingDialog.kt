@@ -24,10 +24,10 @@ class LoggingDialog : Div() {
 
     fun closeDialog() {
         dialog.close()
-        content.removeAll()
     }
 
     fun openDialog(logLines: String) {
+        content.removeAll()
         content.add(Pre(logLines))
         dialog.open()
     }
