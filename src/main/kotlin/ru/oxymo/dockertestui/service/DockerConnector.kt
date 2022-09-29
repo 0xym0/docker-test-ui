@@ -58,7 +58,7 @@ class DockerConnector(
         configuration: DockerConfigurationDTO,
         dockerClient: DockerClient
     ) = try {
-        dockerClient.pingCmd()
+        dockerClient.pingCmd().exec()
         true
     } catch (e: RuntimeException) {
         log.error(
