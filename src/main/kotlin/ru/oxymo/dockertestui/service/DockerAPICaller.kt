@@ -54,11 +54,13 @@ class DockerAPICaller @Autowired constructor(
 
     fun getContainerLogs(containerDTO: ContainerDTO): String {
         if (!dockerConnector.isValidConfiguration()) {
-            log.warn("Invalid docker configuration. " +
-                    "Unable to obtain logs for container with id = ${containerDTO.id}")
+            log.warn(
+                "Invalid docker configuration. " +
+                        "Unable to obtain logs for container with id = ${containerDTO.id}"
+            )
             return EMPTY_STRING
         }
-        log.info("Showing logs for container with id = {}", containerDTO.id)
+        log.info("Showing logs for container with id = ${containerDTO.id}")
         val stringBuilder = StringBuilder()
         val response = dockerConnector.getDockerClient().logContainerCmd(containerDTO.id)
             .withStdErr(true)
@@ -68,7 +70,7 @@ class DockerAPICaller @Autowired constructor(
             .exec(object : ResultCallback.Adapter<Frame>() {
                 override fun onNext(frame: Frame) {
                     val logPart = frame.payload.toString(Charsets.UTF_8)
-                    log.trace("Log part for container with id = {}: {}", containerDTO.id, logPart)
+                    log.trace("Log part for container with id = ${containerDTO.id}: $logPart")
                     stringBuilder.append(logPart)
                 }
             })
