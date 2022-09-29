@@ -8,9 +8,11 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.spring.annotation.SpringComponent
+import com.vaadin.flow.spring.annotation.UIScope
 import org.springframework.beans.factory.annotation.Autowired
 
 @SpringComponent
+@UIScope
 class Header @Autowired constructor(private val connectionDialog: ConnectionDialog) : VerticalLayout() {
 
     private val h1 = H1("Docker Test UI")

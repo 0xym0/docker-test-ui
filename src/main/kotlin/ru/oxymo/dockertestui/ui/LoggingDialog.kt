@@ -5,8 +5,10 @@ import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.Pre
 import com.vaadin.flow.spring.annotation.SpringComponent
+import com.vaadin.flow.spring.annotation.UIScope
 
 @SpringComponent
+@UIScope
 class LoggingDialog : Div() {
 
     private final val dialog = Dialog()
@@ -16,14 +18,10 @@ class LoggingDialog : Div() {
         dialog.headerTitle = "Container log"
         dialog.add(content)
         dialog.footer.add(Button("Close") {
-            closeDialog()
+            dialog.close()
         })
 
         this.add(dialog)
-    }
-
-    fun closeDialog() {
-        dialog.close()
     }
 
     fun openDialog(logLines: String) {

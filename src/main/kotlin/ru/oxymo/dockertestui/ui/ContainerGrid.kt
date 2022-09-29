@@ -11,6 +11,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.shared.Registration
 import com.vaadin.flow.spring.annotation.SpringComponent
+import com.vaadin.flow.spring.annotation.UIScope
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.scheduling.annotation.Scheduled
 import ru.oxymo.dockertestui.data.ContainerDTO
@@ -18,6 +19,7 @@ import ru.oxymo.dockertestui.service.DockerAPICaller
 import ru.oxymo.dockertestui.util.ContainerListRefresher
 
 @SpringComponent
+@UIScope
 class ContainerGrid @Autowired constructor(
     private val loggingDialog: LoggingDialog,
     private val dockerAPICaller: DockerAPICaller

@@ -8,10 +8,12 @@ import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.spring.annotation.SpringComponent
+import com.vaadin.flow.spring.annotation.UIScope
 import org.springframework.beans.factory.annotation.Autowired
 import ru.oxymo.dockertestui.service.DockerConnector
 
 @SpringComponent
+@UIScope
 class ConnectionDialog @Autowired constructor(
     private val dockerConnector: DockerConnector
 ) : Div() {
