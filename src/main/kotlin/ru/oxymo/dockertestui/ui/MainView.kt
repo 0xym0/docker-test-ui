@@ -7,14 +7,17 @@ import org.springframework.beans.factory.annotation.Autowired
 
 @Route
 @CssImport("./styles/styles.css")
-class MainView @Autowired constructor(private val header: Header,
-                                      private val containerGrid: ContainerGrid) : VerticalLayout() {
+class MainView @Autowired constructor(
+    header: Header,
+    containerGrid: ContainerGrid
+) : VerticalLayout() {
 
     init {
         add(
             header,
             containerGrid
         )
+        setSizeFull()
     }
 
 }

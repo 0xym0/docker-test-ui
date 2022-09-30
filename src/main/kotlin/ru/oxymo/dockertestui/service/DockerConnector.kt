@@ -24,25 +24,25 @@ class DockerConnector(
 ) {
 
     private val log = LoggerFactory.getLogger(DockerConnector::class.java)
-    private var configurationDTO = DockerConfigurationDTO(
+    private var dockerConfigurationDTO = DockerConfigurationDTO(
         dockerHost, dockerCertPath, dockerTlsVerify, dockerApiVersion
     )
     private lateinit var dockerClient: DockerClient
     private var isValidDockerConfiguration = false
 
     init {
-        val dockerConfiguration = buildDockerClientConfig(configurationDTO)
+        val dockerConfiguration = buildDockerClientConfig(dockerConfigurationDTO)
         val dockerHttpClient = buildDockerHttpClient(dockerConfiguration)
         dockerClient = DockerClientImpl.getInstance(dockerConfiguration, dockerHttpClient)
-        isValidDockerConfiguration = isDockerClientConfigurationValid(configurationDTO, dockerClient)
+        isValidDockerConfiguration = isDockerClientConfigurationValid(dockerConfigurationDTO, dockerClient)
     }
 
-    private fun buildDockerClientConfig(configuration: DockerConfigurationDTO): DockerClientConfig =
+    private fun buildDockerClientConfig(configurationDTO: DockerConfigurationDTO): DockerClientConfig =
         DefaultDockerClientConfig.createDefaultConfigBuilder()
-            .withDockerHost(configuration.dockerHost)
-            .withDockerCertPath(configuration.dockerCertPath)
-            .withDockerTlsVerify(configuration.dockerTlsVerify)
-            .withApiVersion(configuration.dockerApiVersion)
+            .withDockerHost(configurationDTO.dockerHost)
+            .withDockerCertPath(configurationDTO.dockerCertPath)
+            .withDockerTlsVerify(configurationDTO.dockerTlsVerify)
+            .withApiVersion(configurationDTO.dockerApiVersion)
             .build()
 
     private fun buildDockerHttpClient(dockerConfiguration: DockerClientConfig): DockerHttpClient =
@@ -55,15 +55,15 @@ class DockerConnector(
             .build()
 
     private fun isDockerClientConfigurationValid(
-        configuration: DockerConfigurationDTO,
+        configurationDTO: DockerConfigurationDTO,
         dockerClient: DockerClient
     ) = try {
         dockerClient.pingCmd().exec()
         true
     } catch (e: RuntimeException) {
         log.error(
-            "Ping command failed for ${configuration.dockerHost}/${configuration.dockerApiVersion} " +
-                    if (configuration.dockerTlsVerify) "with TLS" else "without TLS" +
+            "Ping command failed for ${configurationDTO.dockerHost}/v${configurationDTO.dockerApiVersion} " +
+                    if (configurationDTO.dockerTlsVerify) "with TLS" else "without TLS" +
                             ". Setting docker configuration as invalid", e
         )
         false
@@ -71,23 +71,24 @@ class DockerConnector(
 
     fun getDockerClient() = dockerClient
 
-    fun getDockerConfigurationDTO() = configurationDTO
+    fun getDockerConfigurationDTO() = dockerConfigurationDTO
 
     fun isValidConfiguration() = isValidDockerConfiguration
 
-    fun updateDockerConfiguration(configuration: DockerConfigurationDTO): Boolean {
-        val dockerConfiguration = buildDockerClientConfig(configuration)
+    fun updateDockerConfiguration(configurationDTO: DockerConfigurationDTO): Boolean {
+        val dockerConfiguration = buildDockerClientConfig(configurationDTO)
         val dockerHttpClient = buildDockerHttpClient(dockerConfiguration)
         val dockerClient = DockerClientImpl.getInstance(dockerConfiguration, dockerHttpClient)
-        val isValidDockerConfiguration = isDockerClientConfigurationValid(configuration, dockerClient)
+
+        val isValidDockerConfiguration = isDockerClientConfigurationValid(configurationDTO, dockerClient)
         if (isValidDockerConfiguration) {
-            log.info("Configuration check is successful. Saving new parameters: $configuration")
-            this.configurationDTO = configuration
+            log.info("Configuration check is successful. Saving new parameters: $configurationDTO")
+            this.dockerConfigurationDTO = configurationDTO
             this.dockerClient = dockerClient
             this.isValidDockerConfiguration = true
         } else {
-            log.warn("Invalid new configuration: $configuration. " +
-                    "Using previous parameters for connecting docker: $configurationDTO")
+            log.warn("Invalid new configuration: $configurationDTO. " +
+                    "Using previous parameters for connecting docker: $dockerConfigurationDTO")
         }
         return isValidDockerConfiguration
     }

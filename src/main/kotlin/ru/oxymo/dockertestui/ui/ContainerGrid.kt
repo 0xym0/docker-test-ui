@@ -47,6 +47,7 @@ class ContainerGrid @Autowired constructor(
 
         this.isPadding = false
         this.isMargin = false
+        this.setSizeFull()
         this.add(
             loggingDialog,
             grid
