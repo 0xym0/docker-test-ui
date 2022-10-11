@@ -31,6 +31,7 @@ class ContainerGrid @Autowired constructor(
     private var gridRefresherRegistration: Registration? = null
     private var notificationPusherRegistration: Registration? = null
     private val gridUID = UUID.randomUUID().toString()
+    private var isFirstGridUpdate = true
 
     init {
         grid.addColumn(ContainerDTO::id).setHeader("ID").isSortable = false
@@ -52,12 +53,14 @@ class ContainerGrid @Autowired constructor(
     }
 
     @Scheduled(
-        fixedDelayString = "\${docker.test.ui.grid.update.delay.ms:10000}",
-        initialDelayString = "\${docker.test.ui.grid.initial.delay.ms:10000}"
+        fixedDelayString = "\${docker.test.ui.grid.update.delay.ms:10000}"
     )
     fun refreshGridItems() {
-        val containerDTOList = dockerAPICaller.getContainers()
+        val containerDTOList = dockerAPICaller.getContainers(!isFirstGridUpdate)
         ContainerListRefresher.broadcast(containerDTOList)
+        if (isFirstGridUpdate) {
+            isFirstGridUpdate = false
+        }
     }
 
     override fun onAttach(attachEvent: AttachEvent) {

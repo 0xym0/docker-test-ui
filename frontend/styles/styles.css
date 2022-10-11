@@ -7,12 +7,13 @@ h1 {
     font-size: 24px;
 }
 
-pre {
-    margin-top: 0;
-    background-color: #f4f4f4 !important;
+div.logging-dialog-body {
     min-width: 400px;
     max-width: 100%;
     min-height: 240px;
+    font-family: monospace;
+    white-space: pre;
+    margin: 0;
 }
 
 .docker-test-ui-configuration-form-layout {
