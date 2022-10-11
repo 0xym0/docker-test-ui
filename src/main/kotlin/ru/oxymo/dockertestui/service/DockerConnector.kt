@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import ru.oxymo.dockertestui.data.DockerConfigurationDTO
+import ru.oxymo.dockertestui.data.NotificationDTO
+import ru.oxymo.dockertestui.util.CommonUtil
+import ru.oxymo.dockertestui.util.NotificationPusher
 import java.time.Duration
 
 @Service
@@ -61,10 +64,13 @@ class DockerConnector(
         dockerClient.pingCmd().exec()
         true
     } catch (e: RuntimeException) {
-        log.error(
+        val errorMessage =
             "Ping command failed for ${configurationDTO.dockerHost}/v${configurationDTO.dockerApiVersion} " +
                     if (configurationDTO.dockerTlsVerify) "with TLS" else "without TLS" +
-                            ". Setting docker configuration as invalid", e
+                            ". Setting docker configuration as invalid"
+        log.error(errorMessage, e)
+        NotificationPusher.broadcast(
+            NotificationDTO(errorMessage + CommonUtil.getErrorTextFromException(e), true)
         )
         false
     }
@@ -83,12 +89,16 @@ class DockerConnector(
         val isValidDockerConfiguration = isDockerClientConfigurationValid(configurationDTO, dockerClient)
         if (isValidDockerConfiguration) {
             log.info("Configuration check is successful. Saving new parameters: $configurationDTO")
-            this.dockerConfigurationDTO = configurationDTO
-            this.dockerClient = dockerClient
-            this.isValidDockerConfiguration = true
+            synchronized(this) {
+                this.dockerConfigurationDTO = configurationDTO
+                this.dockerClient = dockerClient
+                this.isValidDockerConfiguration = true
+            }
         } else {
-            log.warn("Invalid new configuration: $configurationDTO. " +
-                    "Using previous parameters for connecting docker: $dockerConfigurationDTO")
+            log.warn(
+                "Invalid new configuration: $configurationDTO. " +
+                        "Using previous parameters for connecting docker: $dockerConfigurationDTO"
+            )
         }
         return isValidDockerConfiguration
     }
