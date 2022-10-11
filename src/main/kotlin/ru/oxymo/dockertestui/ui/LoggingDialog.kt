@@ -1,33 +1,57 @@
 package ru.oxymo.dockertestui.ui
 
+import com.vaadin.flow.component.AttachEvent
+import com.vaadin.flow.component.DetachEvent
+import com.vaadin.flow.component.Text
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
-import com.vaadin.flow.component.html.Pre
-import com.vaadin.flow.spring.annotation.SpringComponent
-import com.vaadin.flow.spring.annotation.UIScope
+import com.vaadin.flow.shared.Registration
+import ru.oxymo.dockertestui.service.DockerAPICaller
+import ru.oxymo.dockertestui.util.CommonUtil
+import ru.oxymo.dockertestui.util.LogDataUpdater
 
-@SpringComponent
-@UIScope
-class LoggingDialog : Div() {
+class LoggingDialog(
+    private val guid: String,
+    private val containerID: String,
+    private val dockerAPICaller: DockerAPICaller
+) : Dialog() {
 
-    private final val dialog = Dialog()
-    private final val content = Div()
+    private val content = Div()
+    private val loggingKey = CommonUtil.getLoggingKey(guid, containerID)
+    private var logDataUpdaterRegistration: Registration? = null
 
     init {
-        dialog.headerTitle = "Container log"
-        dialog.add(content)
-        dialog.footer.add(Button("Close") {
-            dialog.close()
+        headerTitle = "Container log"
+        content.addClassName("logging-dialog-body")
+        add(content)
+        footer.add(Button("Close") {
+            close()
         })
-
-        this.add(dialog)
     }
 
-    fun openDialog(logLines: String) {
+    override fun onAttach(attachEvent: AttachEvent) {
+        val ui = attachEvent.ui
+        logDataUpdaterRegistration = LogDataUpdater.register(loggingKey) { logText ->
+            ui.access {
+                content.add(Text(logText))
+            }
+        }
+    }
+
+    override fun onDetach(detachEvent: DetachEvent) {
+        logDataUpdaterRegistration?.remove()
+        logDataUpdaterRegistration = null
+    }
+
+    override fun open() {
         content.removeAll()
-        content.add(Pre(logLines))
-        dialog.open()
+        super.open()
+    }
+
+    override fun close() {
+        dockerAPICaller.resetContainerLogsFollowing(guid, containerID)
+        super.close()
     }
 
 }

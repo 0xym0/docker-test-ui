@@ -15,23 +15,22 @@ import com.vaadin.flow.spring.annotation.UIScope
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.scheduling.annotation.Scheduled
 import ru.oxymo.dockertestui.data.ContainerDTO
-import ru.oxymo.dockertestui.data.NotificationDTO
 import ru.oxymo.dockertestui.service.DockerAPICaller
-import ru.oxymo.dockertestui.util.CommonUtil
-import ru.oxymo.dockertestui.util.Constants.EMPTY_STRING
 import ru.oxymo.dockertestui.util.ContainerListRefresher
 import ru.oxymo.dockertestui.util.NotificationPusher
+import java.util.*
 
 @SpringComponent
 @UIScope
 class ContainerGrid @Autowired constructor(
-    private val loggingDialog: LoggingDialog,
     private val dockerAPICaller: DockerAPICaller
 ) : VerticalLayout() {
 
-    private final val grid = Grid<ContainerDTO>()
+    private val grid = Grid<ContainerDTO>()
+    private val loggingDialogMap: MutableMap<String, LoggingDialog> = mutableMapOf()
     private var gridRefresherRegistration: Registration? = null
     private var notificationPusherRegistration: Registration? = null
+    private val gridUID = UUID.randomUUID().toString()
 
     init {
         grid.addColumn(ContainerDTO::id).setHeader("ID").isSortable = false
@@ -41,7 +40,6 @@ class ContainerGrid @Autowired constructor(
         grid.addColumn(ContainerDTO::status).setHeader("Status").isSortable = false
         grid.addComponentColumn { item -> getCellLayout(item) }
 
-        grid.setItems(dockerAPICaller.getContainers())
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
         grid.setSelectionMode(Grid.SelectionMode.NONE)
 
@@ -49,7 +47,6 @@ class ContainerGrid @Autowired constructor(
         this.isMargin = false
         this.setSizeFull()
         this.add(
-            loggingDialog,
             grid
         )
     }
@@ -59,17 +56,8 @@ class ContainerGrid @Autowired constructor(
         initialDelayString = "\${docker.test.ui.grid.initial.delay.ms:10000}"
     )
     fun refreshGridItems() {
-        try {
-            val containerDTOList = dockerAPICaller.getContainers()
-            ContainerListRefresher.broadcast(containerDTOList)
-        } catch (e: RuntimeException) {
-            NotificationPusher.broadcast(
-                NotificationDTO(
-                    "Unable to load container list" +
-                            CommonUtil.getErrorTextFromException(e), true
-                )
-            )
-        }
+        val containerDTOList = dockerAPICaller.getContainers()
+        ContainerListRefresher.broadcast(containerDTOList)
     }
 
     override fun onAttach(attachEvent: AttachEvent) {
@@ -136,41 +124,28 @@ class ContainerGrid @Autowired constructor(
     }
 
     private fun startContainer(containerDTO: ContainerDTO) {
-        try {
-            dockerAPICaller.startContainer(containerDTO)
-            refreshGridItems()
-        } catch (e: RuntimeException) {
-            NotificationCreator.showErrorNotification(
-                "Unable to start container with id = ${containerDTO.id}. " +
-                        CommonUtil.getErrorTextFromException(e)
-            )
-        }
+        dockerAPICaller.startContainer(containerDTO.id)
+        refreshGridItems()
     }
 
     private fun stopContainer(containerDTO: ContainerDTO) {
-        try {
-            dockerAPICaller.stopContainer(containerDTO)
-            refreshGridItems()
-        } catch (e: RuntimeException) {
-            NotificationCreator.showErrorNotification(
-                "Unable to stop container with id = ${containerDTO.id}. " +
-                        CommonUtil.getErrorTextFromException(e)
-            )
-        }
+        dockerAPICaller.stopContainer(containerDTO.id)
+        refreshGridItems()
     }
 
     private fun showContainerLogs(containerDTO: ContainerDTO) {
-//        TODO: make logs updatable in real time for running containers
-        val logs = try {
-            dockerAPICaller.getContainerLogs(containerDTO)
-        } catch (e: RuntimeException) {
-            NotificationCreator.showErrorNotification(
-                "Unable to load logs for container with id = ${containerDTO.id}. " +
-                        CommonUtil.getErrorTextFromException(e)
-            )
-            EMPTY_STRING
-        }
-        loggingDialog.openDialog(logs)
+        val containerID = containerDTO.id
+        val dialog: LoggingDialog =
+            if (loggingDialogMap.contains(containerID)) {
+                loggingDialogMap[containerID] as LoggingDialog
+            } else {
+                val loggingDialog = LoggingDialog(gridUID, containerID, dockerAPICaller)
+                this.add(loggingDialog)
+                loggingDialogMap[containerID] = loggingDialog
+                loggingDialog
+            }
+        dialog.open()
+        dockerAPICaller.getContainerLogs(gridUID, containerID)
     }
 
 }

@@ -6,80 +6,137 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import ru.oxymo.dockertestui.data.ContainerDTO
-import ru.oxymo.dockertestui.util.Constants.EMPTY_STRING
+import ru.oxymo.dockertestui.data.NotificationDTO
+import ru.oxymo.dockertestui.util.CommonUtil
+import ru.oxymo.dockertestui.util.LogDataUpdater
+import ru.oxymo.dockertestui.util.NotificationPusher
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 @Service
 class DockerAPICaller @Autowired constructor(
     private val dockerConnector: DockerConnector
 ) {
 
+    private val loggingEnabledMap = ConcurrentHashMap<String, Boolean>()
     private val log = LoggerFactory.getLogger(DockerAPICaller::class.java)
-    fun getContainers(): List<ContainerDTO> {
-        if (!dockerConnector.isValidConfiguration()) {
+    private val executor: Executor = Executors.newCachedThreadPool()
+
+    fun getContainers(checkConfiguration: Boolean = true): List<ContainerDTO> {
+        if (checkConfiguration && !dockerConnector.isValidConfiguration()) {
+            log.warn("Invalid docker configuration. Unable to list available containers")
             return emptyList()
         }
-        val containerList = dockerConnector.getDockerClient()
-            .listContainersCmd().withShowAll(true).exec()
-        return containerList.map {
-            ContainerDTO(
-                it.id,
-                it.image,
-                it.command,
-                it.created,
-                it.status,
-                it.state,
-                it.ports.joinToString(", \n"),
-                it.names.joinToString(", \n")
-            )
+        val containerList =
+            try {
+                dockerConnector.getDockerClient()
+                    .listContainersCmd()
+                    .withShowAll(true)
+                    .exec()
+            } catch (e: RuntimeException) {
+                val errorMessage = "Unable to load container list. "
+                log.error(errorMessage, e)
+                NotificationPusher.broadcast(
+                    NotificationDTO(
+                        errorMessage + CommonUtil.getErrorTextFromException(e), true
+                    )
+                )
+                emptyList()
+            }
+        return containerList
+            .filterNotNull()
+            .map {
+                ContainerDTO(
+                    it.id,
+                    it.image,
+                    it.command,
+                    it.created,
+                    it.status,
+                    it.state,
+                    it.ports.joinToString(", \n"),
+                    it.names.joinToString(", \n")
+                )
+            }
+    }
+
+    fun startContainer(containerID: String) {
+        log.info("Starting container with id = {}", containerID)
+        executor.execute {
+            try {
+                dockerConnector.getDockerClient().startContainerCmd(containerID).exec()
+            } catch (e: RuntimeException) {
+                val errorMessage = "Unable to start container with id = $containerID. "
+                log.error(errorMessage, e)
+                NotificationPusher.broadcast(
+                    NotificationDTO(
+                        errorMessage + CommonUtil.getErrorTextFromException(e), true
+                    )
+                )
+            }
         }
     }
 
-    fun startContainer(containerDTO: ContainerDTO) {
-        if (!dockerConnector.isValidConfiguration()) {
-            log.warn("Invalid docker configuration. Unable to start container with id = ${containerDTO.id}")
-            return
+    fun stopContainer(containerID: String) {
+        log.info("Stopping container with id = {}", containerID)
+        executor.execute {
+            try {
+                dockerConnector.getDockerClient().stopContainerCmd(containerID).exec()
+            } catch (e: RuntimeException) {
+                val errorMessage = "Unable to stop container with id = $containerID. "
+                log.error(errorMessage, e)
+                NotificationPusher.broadcast(
+                    NotificationDTO(
+                        errorMessage + CommonUtil.getErrorTextFromException(e), true
+                    )
+                )
+            }
         }
-        log.info("Starting container with id = {}", containerDTO.id)
-        dockerConnector.getDockerClient().startContainerCmd(containerDTO.id).exec()
     }
 
-    fun stopContainer(containerDTO: ContainerDTO) {
-        if (!dockerConnector.isValidConfiguration()) {
-            log.warn("Invalid docker configuration. Unable to stop container with id = ${containerDTO.id}")
-            return
-        }
-        log.info("Stopping container with id = {}", containerDTO.id)
-        dockerConnector.getDockerClient().stopContainerCmd(containerDTO.id).exec()
-    }
+    fun getContainerLogs(guid: String, containerID: String) {
+        val loggingKey = CommonUtil.getLoggingKey(guid, containerID)
+        loggingEnabledMap[loggingKey] = true
 
-    fun getContainerLogs(containerDTO: ContainerDTO): String {
-        if (!dockerConnector.isValidConfiguration()) {
-            log.warn(
-                "Invalid docker configuration. " +
-                        "Unable to obtain logs for container with id = ${containerDTO.id}"
-            )
-            return EMPTY_STRING
-        }
-        log.info("Showing logs for container with id = ${containerDTO.id}")
-        val stringBuilder = StringBuilder()
-        val response = dockerConnector.getDockerClient().logContainerCmd(containerDTO.id)
+        log.info("Showing logs for container with id = $containerID and UI with GUID = $guid")
+        val logContainerCommand = dockerConnector.getDockerClient()
+            .logContainerCmd(containerID)
             .withStdErr(true)
             .withStdOut(true)
             .withFollowStream(true)
-            .withTail(1000)
-            .exec(object : ResultCallback.Adapter<Frame>() {
-                override fun onNext(frame: Frame) {
-                    val logPart = frame.payload.toString(Charsets.UTF_8)
-                    log.trace("Log part for container with id = ${containerDTO.id}: $logPart")
-                    stringBuilder.append(logPart)
+
+        val resultCallback = object : ResultCallback.Adapter<Frame>() {
+            override fun onNext(frame: Frame) {
+                val logPart = frame.payload.toString(Charsets.UTF_8)
+                log.trace("Log part for loggingKey = $loggingKey: $logPart")
+                LogDataUpdater.broadcast(loggingKey, logPart)
+                if (loggingEnabledMap[loggingKey] == false) {
+                    this.close()
                 }
-            })
-        try {
-            response.awaitCompletion()
-            return stringBuilder.toString()
-        } catch (e: InterruptedException) {
-            throw RuntimeException(e)
+            }
         }
+
+        executor.execute {
+            try {
+                val response = logContainerCommand.exec(resultCallback)
+                response.awaitCompletion()
+            } catch (e: InterruptedException) {
+                throw RuntimeException(e)
+            } catch (e: RuntimeException) {
+                val errorMessage = "Unable to load container logs for loggingKey = $loggingKey. "
+                log.error(errorMessage, e)
+                NotificationPusher.broadcast(
+                    NotificationDTO(
+                        errorMessage + CommonUtil.getErrorTextFromException(e), true
+                    )
+                )
+            }
+        }
+    }
+
+    fun resetContainerLogsFollowing(guid: String, containerID: String) {
+        val loggingKey = CommonUtil.getLoggingKey(guid, containerID)
+        loggingEnabledMap[loggingKey] = false
     }
 
 }
